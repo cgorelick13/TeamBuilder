@@ -10,11 +10,13 @@
 		001C9DD5B860309A351A7558 /* StatBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA7602A1B6FBC36491FA8303 /* StatBar.swift */; };
 		18BBDFFB20CBC5375EA26C46 /* TeamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E47910ADCE154E25EBFFA9D5 /* TeamDetailView.swift */; };
 		1B8B27C9BC40FB277226838D /* PokemonDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E79778ED2E95E65AB3E9491 /* PokemonDetailView.swift */; };
+		1DFA71497DD9AD3966A7BE76 /* PokemonDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE1135A42BC21DEE7EC4A2D4 /* PokemonDatabase.swift */; };
 		284F218CE4620E091ADA3FA0 /* CachedPokemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1433A07268BD9BF48879B7C6 /* CachedPokemon.swift */; };
 		32F18E18666CDBCC8FA28FFE /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694EA335312BFDA2194B7551 /* RootView.swift */; };
 		45483AFD1E43FD4B9818EAA1 /* TeamBuilderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C757401F9DD773A4A4AE65C /* TeamBuilderApp.swift */; };
 		4A1B920B002CFB78D6597B01 /* MyTeamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406762158B7400616B003F28 /* MyTeamsView.swift */; };
 		4E03967D8AD6838C4FADF70B /* TeamScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109EC555DC03F77B4C834688 /* TeamScorer.swift */; };
+		61CBFE7641DD658452622524 /* pokemon_data.json in Resources */ = {isa = PBXBuildFile; fileRef = A92694E6E79E57485088C777 /* pokemon_data.json */; };
 		64223F04C3E0212932DF1055 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFB9EED5DBF10CBD346C1EF /* OnboardingView.swift */; };
 		6C8F64DDE582481F73FFD44E /* PokemonSpriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49BA7B2389DB17D895D31BD /* PokemonSpriteView.swift */; };
 		95DA3C9BC704EB4088765A3F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 528C86B28122714788BA4BCC /* MainTabView.swift */; };
@@ -38,12 +40,14 @@
 		8C757401F9DD773A4A4AE65C /* TeamBuilderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamBuilderApp.swift; sourceTree = "<group>"; };
 		A49BA7B2389DB17D895D31BD /* PokemonSpriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokemonSpriteView.swift; sourceTree = "<group>"; };
 		A917EACA06ACE2DEFBD7610B /* PokemonTeam.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokemonTeam.swift; sourceTree = "<group>"; };
+		A92694E6E79E57485088C777 /* pokemon_data.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = pokemon_data.json; sourceTree = "<group>"; };
 		BA7602A1B6FBC36491FA8303 /* StatBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatBar.swift; sourceTree = "<group>"; };
 		C5B56F62ED41ADBF38DB00DD /* TeamBuilder.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TeamBuilder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF16E68E4660116EF422BDD4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CFFB9EED5DBF10CBD346C1EF /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		E47910ADCE154E25EBFFA9D5 /* TeamDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamDetailView.swift; sourceTree = "<group>"; };
 		EDA221F93952B4F2FE16C0FF /* TypeBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeBadge.swift; sourceTree = "<group>"; };
+		FE1135A42BC21DEE7EC4A2D4 /* PokemonDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokemonDatabase.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -59,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				CF16E68E4660116EF422BDD4 /* Info.plist */,
+				A92694E6E79E57485088C777 /* pokemon_data.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -140,6 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				01ED26FB392162D28E9E26E5 /* PokeAPIService.swift */,
+				FE1135A42BC21DEE7EC4A2D4 /* PokemonDatabase.swift */,
 				109EC555DC03F77B4C834688 /* TeamScorer.swift */,
 			);
 			path = Services;
@@ -167,6 +173,7 @@
 			buildConfigurationList = DD324C9118F9F1E218E5F3A4 /* Build configuration list for PBXNativeTarget "TeamBuilder" */;
 			buildPhases = (
 				BFBBF14623FB35CCD9A88350 /* Sources */,
+				EAF04F3F810BB9EAAB13F1E1 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -207,6 +214,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		EAF04F3F810BB9EAAB13F1E1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				61CBFE7641DD658452622524 /* pokemon_data.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		BFBBF14623FB35CCD9A88350 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -218,6 +236,7 @@
 				64223F04C3E0212932DF1055 /* OnboardingView.swift in Sources */,
 				D4DDA25130E74699A5675633 /* PokeAPIService.swift in Sources */,
 				A4E2C4E96745DFF6B96FCA47 /* PokedexView.swift in Sources */,
+				1DFA71497DD9AD3966A7BE76 /* PokemonDatabase.swift in Sources */,
 				1B8B27C9BC40FB277226838D /* PokemonDetailView.swift in Sources */,
 				6C8F64DDE582481F73FFD44E /* PokemonSpriteView.swift in Sources */,
 				ACE3A73ECFD318A6FFE1E1EC /* PokemonTeam.swift in Sources */,

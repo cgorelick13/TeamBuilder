@@ -10,20 +10,21 @@ struct PokedexView: View {
     // Search & filter state
     @State private var searchText = ""
     @State private var selectedTypes: Set<String> = []
-    @State private var typeFilterMode: TypeFilterMode = .any
     @State private var selectedGen: Int = 0          // 0 = all
-    @State private var minSpeed: Double = 0
     @State private var showLegendaries = true
     @State private var sortOption: SortOption = .id
     @State private var showFilters = false
 
+    // Stat minimum filters (empty string = no filter)
+    @State private var minHP = ""
+    @State private var minAttack = ""
+    @State private var minDefense = ""
+    @State private var minSpAtk = ""
+    @State private var minSpDef = ""
+    @State private var minSpeed = ""
+
     // For detail navigation
     @State private var selectedPokemon: CachedPokemon?
-
-    enum TypeFilterMode: String, CaseIterable {
-        case any = "Any Type"
-        case all = "All Types"
-    }
 
     enum SortOption: String, CaseIterable {
         case id = "#"
@@ -41,7 +42,6 @@ struct PokedexView: View {
     private var filteredPokemon: [CachedPokemon] {
         var result = allPokemon
 
-        // Only show fully loaded stub Pokemon (at minimum they need a name)
         if !searchText.isEmpty {
             result = result.filter {
                 $0.displayName.localizedCaseInsensitiveContains(searchText) ||
@@ -50,27 +50,25 @@ struct PokedexView: View {
         }
 
         if selectedGen > 0 {
-            result = result.filter { $0.generation == selectedGen || $0.generation == 0 }
+            result = result.filter { $0.generation == selectedGen }
         }
 
         if !showLegendaries {
             result = result.filter { !$0.isLegendary && !$0.isMythical }
         }
 
+        // Type filter — OR logic: show Pokemon that have any of the selected types
         if !selectedTypes.isEmpty {
-            result = result.filter { pokemon in
-                let typeSet = Set(pokemon.types)
-                if typeFilterMode == .all {
-                    return selectedTypes.isSubset(of: typeSet)
-                } else {
-                    return !selectedTypes.isDisjoint(with: typeSet)
-                }
-            }
+            result = result.filter { !selectedTypes.isDisjoint(with: Set($0.types)) }
         }
 
-        if minSpeed > 0 {
-            result = result.filter { $0.speed >= Int(minSpeed) || !$0.isFullyLoaded }
-        }
+        // Stat minimum filters
+        if let val = Int(minHP),      val > 0 { result = result.filter { $0.hp >= val } }
+        if let val = Int(minAttack),  val > 0 { result = result.filter { $0.attack >= val } }
+        if let val = Int(minDefense), val > 0 { result = result.filter { $0.defense >= val } }
+        if let val = Int(minSpAtk),   val > 0 { result = result.filter { $0.specialAttack >= val } }
+        if let val = Int(minSpDef),   val > 0 { result = result.filter { $0.specialDefense >= val } }
+        if let val = Int(minSpeed),   val > 0 { result = result.filter { $0.speed >= val } }
 
         // Sort
         switch sortOption {
@@ -87,41 +85,36 @@ struct PokedexView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Filter bar
-                if showFilters { FilterPanelView(
-                    selectedTypes: $selectedTypes,
-                    typeFilterMode: $typeFilterMode,
-                    selectedGen: $selectedGen,
-                    minSpeed: $minSpeed,
-                    showLegendaries: $showLegendaries
-                ).padding(.horizontal) }
+                // Filter panel
+                if showFilters {
+                    FilterPanelView(
+                        selectedTypes: $selectedTypes,
+                        selectedGen: $selectedGen,
+                        showLegendaries: $showLegendaries,
+                        minHP: $minHP,
+                        minAttack: $minAttack,
+                        minDefense: $minDefense,
+                        minSpAtk: $minSpAtk,
+                        minSpDef: $minSpDef,
+                        minSpeed: $minSpeed
+                    )
+                    .padding(.horizontal)
+                }
 
                 ScrollView {
-                    if allPokemon.isEmpty {
-                        // First launch loading state
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 12) {
-                            ForEach(0..<20, id: \.self) { _ in SkeletonCard() }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 12) {
+                        ForEach(filteredPokemon) { pokemon in
+                            PokemonGridCard(
+                                pokemon: pokemon,
+                                activeTeam: activeTeam,
+                                allTeams: allTeams,
+                                allPokemon: allPokemon,
+                                context: context
+                            )
+                            .onTapGesture { selectedPokemon = pokemon }
                         }
-                        .padding()
-                        Text("Downloading Pokémon data — this only happens once.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                    } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 12) {
-                            ForEach(filteredPokemon) { pokemon in
-                                PokemonGridCard(
-                                    pokemon: pokemon,
-                                    activeTeam: activeTeam,
-                                    allTeams: allTeams,
-                                    context: context
-                                )
-                                .onTapGesture { selectedPokemon = pokemon }
-                            }
-                        }
-                        .padding()
                     }
+                    .padding()
                 }
             }
             .navigationTitle("Pokédex")
@@ -159,6 +152,7 @@ struct PokemonGridCard: View {
     let pokemon: CachedPokemon
     let activeTeam: PokemonTeam?
     let allTeams: [PokemonTeam]
+    let allPokemon: [CachedPokemon]
     let context: ModelContext
 
     @State private var showQuickAdd = false
@@ -167,12 +161,14 @@ struct PokemonGridCard: View {
         guard let team = activeTeam else { return .none }
         if team.containsPokemon(id: pokemon.id) { return .onTeam }
         if team.isFull { return .none }
-        // Check if adding this Pokemon would create a 3+ stacked weakness
-        let weaksBefore = TeamScorer.sharedWeaknessMap(
-            team: allTeams.first(where: { $0.isActive }).map { _ in [] } ?? []
-        )
-        _ = weaksBefore
-        return .safeToAdd  // Simplified — full logic implemented in TeamScorer
+        guard !pokemon.types.isEmpty else { return .safeToAdd }
+        let teamPokemon = team.pokemonIDs.compactMap { id in allPokemon.first { $0.id == id } }
+        let beforeMap = TeamScorer.sharedWeaknessMap(team: teamPokemon)
+        let afterMap  = TeamScorer.sharedWeaknessMap(team: teamPokemon + [pokemon])
+        for (type_, afterCount) in afterMap where afterCount >= 2 {
+            if (beforeMap[type_] ?? 0) < 2 { return .addsWeakness }
+        }
+        return .safeToAdd
     }
 
     var body: some View {
@@ -211,10 +207,14 @@ struct PokemonGridCard: View {
             if !allTeams.isEmpty {
                 ForEach(allTeams) { team in
                     Button {
-                        _ = team.addPokemon(id: pokemon.id)
-                        try? context.save()
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        if team.addPokemon(id: pokemon.id) {
+                            try? context.save()
+                            if team.isFull {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            } else {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        }
                     } label: {
                         Label("Add to \(team.name)", systemImage: "plus")
                     }
@@ -249,29 +249,24 @@ enum CompatibilityStatus {
 
 struct FilterPanelView: View {
     @Binding var selectedTypes: Set<String>
-    @Binding var typeFilterMode: PokedexView.TypeFilterMode
     @Binding var selectedGen: Int
-    @Binding var minSpeed: Double
     @Binding var showLegendaries: Bool
+    @Binding var minHP: String
+    @Binding var minAttack: String
+    @Binding var minDefense: String
+    @Binding var minSpAtk: String
+    @Binding var minSpDef: String
+    @Binding var minSpeed: String
 
     private let types = PokemonType.allCases
     private let gens = Array(1...9)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Type filter
+
+            // Type filter — tap to toggle, OR logic
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Type").font(.caption.bold()).foregroundStyle(.secondary)
-                    Spacer()
-                    Picker("", selection: $typeFilterMode) {
-                        ForEach(PokedexView.TypeFilterMode.allCases, id: \.self) {
-                            Text($0.rawValue).tag($0)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 160)
-                }
+                Text("Type").font(.caption.bold()).foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(types) { type_ in
@@ -308,15 +303,17 @@ struct FilterPanelView: View {
                 }
             }
 
-            // Speed filter
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Min Speed").font(.caption.bold()).foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(Int(minSpeed))").font(.caption.monospacedDigit())
+            // Min stat filters — number inputs in a 2-column grid
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Min Stats").font(.caption.bold()).foregroundStyle(.secondary)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    StatMinField(label: "HP",     value: $minHP)
+                    StatMinField(label: "Atk",    value: $minAttack)
+                    StatMinField(label: "Def",    value: $minDefense)
+                    StatMinField(label: "Sp.Atk", value: $minSpAtk)
+                    StatMinField(label: "Sp.Def", value: $minSpDef)
+                    StatMinField(label: "Speed",  value: $minSpeed)
                 }
-                Slider(value: $minSpeed, in: 0...150, step: 5)
-                    .tint(.purple)
             }
 
             // Legendary toggle
@@ -339,15 +336,22 @@ struct FilterPanelView: View {
     }
 }
 
-// MARK: - Skeleton card (loading state)
+// MARK: - Stat min input field
 
-struct SkeletonCard: View {
-    @State private var animate = false
+struct StatMinField: View {
+    let label: String
+    @Binding var value: String
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color(.secondarySystemBackground).opacity(animate ? 0.5 : 1))
-            .frame(height: 110)
-            .onAppear { withAnimation(.easeInOut(duration: 0.9).repeatForever()) { animate.toggle() } }
+        HStack(spacing: 6) {
+            Text(label)
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+                .frame(width: 44, alignment: .leading)
+            TextField("0", text: $value)
+                .textFieldStyle(.roundedBorder)
+                .keyboardType(.numberPad)
+                .font(.caption.monospacedDigit())
+        }
     }
 }

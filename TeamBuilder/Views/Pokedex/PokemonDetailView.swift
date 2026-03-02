@@ -7,15 +7,12 @@ struct PokemonDetailView: View {
 
     @Environment(\.modelContext) private var context
     @Query private var allTeams: [PokemonTeam]
-    @State private var isLoading = false
-    @State private var loadedPokemon: CachedPokemon?
+    @Query private var allPokemon: [CachedPokemon]
     @State private var showTeamPicker = false
     @State private var abilityDescriptions: [String: String] = [:]
+    @State private var selectedEvolution: CachedPokemon?
 
     private var activeTeam: PokemonTeam? { allTeams.first { $0.isActive } }
-
-    // Use loaded data if available, otherwise fall back to stub
-    private var displayPokemon: CachedPokemon { loadedPokemon ?? pokemon }
 
     var body: some View {
         ScrollView {
@@ -25,49 +22,45 @@ struct PokemonDetailView: View {
                 HStack {
                     Spacer()
                     VStack(spacing: 8) {
-                        PokemonSpriteView(url: displayPokemon.officialArtURL ?? displayPokemon.spriteURL, size: 160)
-                        TypeBadgeRow(types: displayPokemon.types)
-                        if displayPokemon.isLegendary {
+                        PokemonSpriteView(url: pokemon.officialArtURL ?? pokemon.spriteURL, size: 160)
+                        TypeBadgeRow(types: pokemon.types)
+                        if pokemon.isLegendary {
                             Label("Legendary", systemImage: "star.fill").font(.caption).foregroundStyle(.yellow)
-                        } else if displayPokemon.isMythical {
+                        } else if pokemon.isMythical {
                             Label("Mythical", systemImage: "sparkles").font(.caption).foregroundStyle(.purple)
                         }
                     }
                     Spacer()
                 }
 
-                if isLoading {
-                    ProgressView("Loading details…").frame(maxWidth: .infinity)
-                }
-
                 // MARK: Base Stats
-                if displayPokemon.isFullyLoaded {
+                if pokemon.isFullyLoaded {
                     GroupBox("Base Stats") {
                         VStack(spacing: 6) {
-                            StatBar(label: "HP",      value: displayPokemon.hp,             maxValue: 255)
-                            StatBar(label: "Attack",  value: displayPokemon.attack,          maxValue: 255)
-                            StatBar(label: "Defense", value: displayPokemon.defense,         maxValue: 255)
-                            StatBar(label: "Sp. Atk", value: displayPokemon.specialAttack,   maxValue: 255)
-                            StatBar(label: "Sp. Def", value: displayPokemon.specialDefense,  maxValue: 255)
-                            StatBar(label: "Speed",   value: displayPokemon.speed,           maxValue: 255)
+                            StatBar(label: "HP",      value: pokemon.hp,             maxValue: 255)
+                            StatBar(label: "Attack",  value: pokemon.attack,          maxValue: 255)
+                            StatBar(label: "Defense", value: pokemon.defense,         maxValue: 255)
+                            StatBar(label: "Sp. Atk", value: pokemon.specialAttack,   maxValue: 255)
+                            StatBar(label: "Sp. Def", value: pokemon.specialDefense,  maxValue: 255)
+                            StatBar(label: "Speed",   value: pokemon.speed,           maxValue: 255)
                             Divider()
                             HStack {
                                 Text("Total").font(.caption.bold()).foregroundStyle(.secondary)
                                 Spacer()
-                                Text("\(displayPokemon.baseStatTotal)").font(.caption.bold())
+                                Text("\(pokemon.baseStatTotal)").font(.caption.bold())
                             }
                         }
                     }
 
                     // MARK: Type Matchup Chart
                     GroupBox("Type Matchups (Defending)") {
-                        TypeMatchupGrid(types: displayPokemon.types)
+                        TypeMatchupGrid(types: pokemon.types)
                     }
 
                     // MARK: Abilities
                     GroupBox("Abilities") {
                         VStack(alignment: .leading, spacing: 8) {
-                            ForEach(displayPokemon.abilities, id: \.self) { ability in
+                            ForEach(pokemon.abilities, id: \.self) { ability in
                                 AbilityRow(
                                     abilityName: ability,
                                     description: abilityDescriptions[ability]
@@ -78,10 +71,23 @@ struct PokemonDetailView: View {
                         }
                     }
 
+                    // MARK: Evolution Chain
+                    let chainIDs = pokemon.evolutionChainIDs
+                    if chainIDs.count > 1 {
+                        GroupBox("Evolution Chain") {
+                            EvolutionChainView(
+                                evolutionChainIDs: chainIDs,
+                                currentID: pokemon.id,
+                                allPokemon: allPokemon,
+                                onSelect: { selectedEvolution = $0 }
+                            )
+                        }
+                    }
+
                     // MARK: Team Fit Analysis
                     if let team = activeTeam {
                         GroupBox("How This Fits \(team.name)") {
-                            TeamFitView(pokemon: displayPokemon, team: team, allPokemon: [])
+                            TeamFitView(pokemon: pokemon, team: team, allPokemon: [])
                         }
                     }
                 }
@@ -89,9 +95,14 @@ struct PokemonDetailView: View {
                 // MARK: Add to Team button
                 Button {
                     if allTeams.count == 1, let team = allTeams.first {
-                        _ = team.addPokemon(id: displayPokemon.id)
-                        try? context.save()
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if team.addPokemon(id: pokemon.id) {
+                            try? context.save()
+                            if team.isFull {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            } else {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        }
                     } else {
                         showTeamPicker = true
                     }
@@ -103,34 +114,22 @@ struct PokemonDetailView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(allTeams.isEmpty || activeTeam.map { $0.containsPokemon(id: displayPokemon.id) || $0.isFull } ?? false)
+                .disabled(allTeams.isEmpty || activeTeam.map { $0.containsPokemon(id: pokemon.id) || $0.isFull } ?? false)
                 .padding(.bottom)
             }
             .padding()
         }
-        .navigationTitle("#\(displayPokemon.id) \(displayPokemon.displayName)")
+        .navigationTitle("#\(pokemon.id) \(pokemon.displayName)")
         .navigationBarTitleDisplayMode(.large)
-        .task { await loadFullData() }
+        .navigationDestination(item: $selectedEvolution) { evo in
+            PokemonDetailView(pokemon: evo)
+        }
         .sheet(isPresented: $showTeamPicker) {
-            TeamPickerSheet(pokemon: displayPokemon)
+            TeamPickerSheet(pokemon: pokemon)
         }
     }
 
     // MARK: - Loaders
-
-    private func loadFullData() async {
-        guard !pokemon.isFullyLoaded else {
-            loadedPokemon = pokemon
-            return
-        }
-        isLoading = true
-        do {
-            loadedPokemon = try await PokeAPIService.shared.loadFullPokemon(id: pokemon.id, context: context)
-        } catch {
-            print("Failed to load \(pokemon.name): \(error)")
-        }
-        isLoading = false
-    }
 
     private func loadAbilityDescription(_ name: String) async {
         guard abilityDescriptions[name] == nil else { return }
@@ -253,6 +252,60 @@ struct TeamFitView: View {
     }
 }
 
+// MARK: - Evolution Chain View
+
+struct EvolutionChainView: View {
+    let evolutionChainIDs: [Int]
+    let currentID: Int
+    let allPokemon: [CachedPokemon]
+    let onSelect: (CachedPokemon) -> Void
+
+    private var chainPokemon: [CachedPokemon] {
+        evolutionChainIDs.compactMap { id in allPokemon.first { $0.id == id } }
+    }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                ForEach(Array(chainPokemon.enumerated()), id: \.element.id) { index, poke in
+                    if index > 0 {
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 2)
+                    }
+                    Button {
+                        if poke.id != currentID { onSelect(poke) }
+                    } label: {
+                        VStack(spacing: 4) {
+                            PokemonSpriteView(url: poke.spriteURL, size: 60)
+                            Text(poke.displayName)
+                                .font(.system(size: 10, weight: .bold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .frame(maxWidth: 68)
+                        }
+                        .padding(6)
+                        .background(
+                            poke.id == currentID
+                                ? Color.blue.opacity(0.12)
+                                : Color(.secondarySystemBackground),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(poke.id == currentID ? Color.blue : Color.clear, lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+        }
+    }
+}
+
 // MARK: - Team Picker Sheet
 
 struct TeamPickerSheet: View {
@@ -265,10 +318,15 @@ struct TeamPickerSheet: View {
         NavigationStack {
             List(allTeams) { team in
                 Button {
-                    _ = team.addPokemon(id: pokemon.id)
-                    try? context.save()
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    dismiss()
+                    if team.addPokemon(id: pokemon.id) {
+                        try? context.save()
+                        if team.isFull {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        } else {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                        dismiss()
+                    }
                 } label: {
                     HStack {
                         Text(team.name)
