@@ -25,9 +25,9 @@ the current state of the app.
 ### 1. Pokedex Tab
 - Browse all 1025 Pokemon in a scrollable grid
 - Search by name
-- Filter by type (multi-type AND/OR logic)
+- Filter by type (multi-select, OR logic — tap types to narrow the grid instantly)
 - Filter by generation (Gen 1–9)
-- Filter by stat thresholds (e.g. Speed > 100) via sliders
+- Filter by minimum stat values (HP, Attack, Defense, Sp. Atk, Sp. Def, Speed) via number inputs
 - Toggle to show/hide Legendary and Mythical Pokemon
 - Sort by: Pokedex number, Base Stat Total, Speed, Attack, name A–Z
 - **Team Compatibility Overlay:** when a team is active, each card shows:
@@ -144,6 +144,7 @@ Note: no loading screen required on first launch — Pokemon data is bundled loc
 
 ## Git Workflow
 - **After every change or update**, commit and push to GitHub automatically
+- **After every change or update**, update `FLOW.md` to reflect the current state before committing
 - Remote: `https://github.com/cgorelick13/TeamBuilder.git` (branch: `main`)
 - When adding new Swift files or resources, run `xcodegen generate` before committing so the `.xcodeproj` stays in sync
 

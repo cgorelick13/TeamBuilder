@@ -23,16 +23,12 @@
     └──────────────────┘           └──────────────────────┘
               │
               ▼
-    ┌──────────────────┐
-    │ Download Pokemon │
-    │ Data from API    │
-    │ (skeleton cards) │
-    └──────────────────┘
-              │
-              ▼
     ┌──────────────────────┐
     │    Main Tab View     │
     │  (Pokedex tab open)  │
+    │  Pokemon data seeded │
+    │  instantly from      │
+    │  bundled JSON        │
     └──────────────────────┘
 ```
 
@@ -94,16 +90,17 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                       Filter Panel                          │
 │                                                             │
-│  Type Filter (multi-select):                                │
-│  [Fire] [Water] [Grass] [Electric] ...  AND/OR toggle       │
+│  Type Filter (multi-select, OR logic):                      │
+│  [Fire] [Water] [Grass] [Electric] ...                      │
+│  Tap to toggle — grid updates instantly                     │
 │                                                             │
 │  Generation:                                                │
 │  [All] [Gen 1] [Gen 2] [Gen 3] ... [Gen 9]                 │
 │                                                             │
-│  Stat Thresholds:                                           │
-│  Speed   ──●─────── 0–255                                   │
-│  HP      ────●───── 0–255                                   │
-│  Attack  ──────●─── 0–255                                   │
+│  Min Stats (number inputs):                                 │
+│  HP: [___]   Atk: [___]                                     │
+│  Def: [___]  Sp.Atk: [___]                                  │
+│  Sp.Def: [___]  Speed: [___]                                │
 │                                                             │
 │  [ ] Show Legendaries / Mythicals                           │
 └─────────────────────────────────────────────────────────────┘
